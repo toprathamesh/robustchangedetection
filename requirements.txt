@@ -1,28 +1,50 @@
-# Core Django packages
+# Core Django Framework
 Django==4.2.7
 djangorestframework==3.14.0
-django-cors-headers==4.3.1
+
+# Database and Utilities
+dj-database-url==3.0.0
 python-decouple==3.8
 
-# Database
-psycopg2-binary==2.9.9
-
-# GIS and Spatial (optional for basic functionality)
-# django-contrib-gis==1.8  # This package doesn't exist, remove it
-
-# Background tasks
+# Background Tasks
 celery==5.3.4
+django-celery-beat==2.8.1
+django-celery-results==2.6.0
 redis==5.0.1
 
-# Image processing
-Pillow==10.1.0
+# Image Processing and Computer Vision
 opencv-python==4.8.1.78
-numpy==1.25.2
+Pillow==10.1.0
+numpy==1.24.4
+matplotlib==3.8.2
 
 # Machine Learning
 torch==2.1.1
 torchvision==0.16.1
 scikit-learn==1.3.2
+
+# Geospatial (Optional - for advanced GIS features)
+# GDAL==3.7.3
+# Fiona==1.9.5
+
+# Web Server (Production)
+gunicorn==21.2.0
+whitenoise==6.6.0
+
+# Development and Linting
+flake8==7.3.0
+
+# CORS handling
+django-cors-headers==4.3.1
+
+# API Documentation
+# drf-spectacular==0.27.0  # Optional - for API docs
+
+# Time zone handling
+pytz==2023.3
+
+# GIS and Spatial (optional for basic functionality)
+# django-contrib-gis==1.8  # This package doesn't exist, remove it
 
 # Data processing
 pandas==2.1.3
@@ -39,7 +61,6 @@ requests==2.31.0
 
 # Utilities
 python-dotenv==1.0.0
-pytz==2023.3
 
 # Development
 pytest==7.4.3
@@ -48,29 +69,10 @@ pytest-django==4.7.0
 # Monitoring (optional)
 sentry-sdk==1.38.0
 
-# Web utilities
-gunicorn==21.2.0
-whitenoise==6.6.0
-
-# Configuration and environment
-dj-database-url==2.1.0
-
-# API documentation
-drf-spectacular==0.26.5
-
-# File handling
-boto3==1.34.0
-django-storages==1.14.2
-
-# Async and task processing
-django-celery-beat==2.5.0
-django-celery-results==2.5.1
-
 # Email and notifications
 django-anymail==10.2
 
 # Visualization
-matplotlib==3.8.2
 seaborn==0.13.0
 
 # Monitoring and logging

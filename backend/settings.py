@@ -7,12 +7,16 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
+SECRET_KEY = config(
+    'SECRET_KEY',
+    default='django-insecure-change-me-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0').split(',')
+ALLOWED_HOSTS = config(
+    'ALLOWED_HOSTS',
+    default='localhost,127.0.0.1,0.0.0.0').split(',')
 
 # Application definition
 DJANGO_APPS = [
@@ -78,9 +82,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL', default='postgis://postgres:password@localhost:5432/changedetection')
-    )
-}
+        default=config(
+            'DATABASE_URL',
+            default='postgis://postgres:password@localhost:5432/changedetection'))}
 
 # Ensure PostGIS engine
 DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'
@@ -168,7 +172,9 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@changedetection.com')
+DEFAULT_FROM_EMAIL = config(
+    'DEFAULT_FROM_EMAIL',
+    default='noreply@changedetection.com')
 
 # Satellite API Configuration
 SENTINEL_HUB_CLIENT_ID = config('SENTINEL_HUB_CLIENT_ID', default='')
@@ -180,9 +186,11 @@ USGS_PASSWORD = config('USGS_PASSWORD', default='')
 
 # Application specific settings
 MAX_AOI_SIZE_KM2 = config('MAX_AOI_SIZE_KM2', default=1000, cast=int)
-MAX_PROCESSING_TIME_MINUTES = config('MAX_PROCESSING_TIME_MINUTES', default=60, cast=int)
+MAX_PROCESSING_TIME_MINUTES = config(
+    'MAX_PROCESSING_TIME_MINUTES', default=60, cast=int)
 CHANGE_THRESHOLD = config('CHANGE_THRESHOLD', default=0.3, cast=float)
-ALERT_EMAIL_COOLDOWN_HOURS = config('ALERT_EMAIL_COOLDOWN_HOURS', default=24, cast=int)
+ALERT_EMAIL_COOLDOWN_HOURS = config(
+    'ALERT_EMAIL_COOLDOWN_HOURS', default=24, cast=int)
 
 # Logging
 LOGGING = {
@@ -230,4 +238,4 @@ LOGGING = {
 }
 
 # Create logs directory if it doesn't exist
-os.makedirs(BASE_DIR / 'logs', exist_ok=True) 
+os.makedirs(BASE_DIR / 'logs', exist_ok=True)
