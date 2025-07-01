@@ -1,0 +1,293 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Robust Change Detection - Satellite Monitoring{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Hero Section -->
+    <div class="bg-primary text-white py-5">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h1 class="display-4 fw-bold mb-4">
+                        Monitor Changes with Satellite Intelligence
+                    </h1>
+                    <p class="lead mb-4">
+                        Detect and track changes in your areas of interest using advanced deep learning 
+                        and multi-temporal satellite imagery from Sentinel-2 and Landsat.
+                    </p>
+                    <div class="d-flex gap-3">
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'core:dashboard' %}" class="btn btn-light btn-lg">
+                                <i class="fas fa-tachometer-alt me-2"></i>
+                                Go to Dashboard
+                            </a>
+                            <a href="{% url 'core:map' %}" class="btn btn-outline-light btn-lg">
+                                <i class="fas fa-map me-2"></i>
+                                Create AOI
+                            </a>
+                        {% else %}
+                            <a href="{% url 'core:login' %}" class="btn btn-light btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>
+                                Get Started
+                            </a>
+                            <a href="#features" class="btn btn-outline-light btn-lg">
+                                Learn More
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="text-center">
+                        <i class="fas fa-satellite display-1 mb-3" style="opacity: 0.8;"></i>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <div class="bg-white bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-globe fa-2x mb-2"></i>
+                                    <small class="d-block">Global Coverage</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="bg-white bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-brain fa-2x mb-2"></i>
+                                    <small class="d-block">AI-Powered</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="bg-white bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-clock fa-2x mb-2"></i>
+                                    <small class="d-block">Real-time</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12 text-center mb-5">
+                    <h2 class="h1 fw-bold">Powerful Features</h2>
+                    <p class="lead text-muted">Everything you need for robust satellite-based change detection</p>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-download fa-2x text-primary"></i>
+                            </div>
+                            <h4 class="fw-bold mb-3">Automated Data Acquisition</h4>
+                            <p class="text-muted">
+                                Automatically download and preprocess Sentinel-2 and Landsat imagery 
+                                for your areas of interest with cloud masking and radiometric normalization.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-brain fa-2x text-success"></i>
+                            </div>
+                            <h4 class="fw-bold mb-3">Deep Learning Detection</h4>
+                            <p class="text-muted">
+                                State-of-the-art U-Net architecture for pixel-wise semantic segmentation 
+                                and accurate change detection with confidence scoring.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-bell fa-2x text-warning"></i>
+                            </div>
+                            <h4 class="fw-bold mb-3">Smart Alerts</h4>
+                            <p class="text-muted">
+                                Get notified via email when significant changes are detected in your 
+                                monitored areas with customizable thresholds and frequency controls.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-map fa-2x text-info"></i>
+                            </div>
+                            <h4 class="fw-bold mb-3">Interactive Mapping</h4>
+                            <p class="text-muted">
+                                Draw areas of interest on an interactive map, visualize change results, 
+                                and explore temporal patterns with intuitive controls.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fas fa-database fa-2x text-danger"></i>
+                            </div>
+                            <h4 class="fw-bold mb-3">Spatial Database</h4>
+                            <p class="text-muted">
+                                PostgreSQL with PostGIS for efficient storage and querying of spatial data, 
+                                with full support for complex geometric operations.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="bg-dark bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                 style="width: 80px; height: 80px;">
+                                <i class="fab fa-docker fa-2x text-dark"></i>
+                            </div>
+                            <h4 class="fw-bold mb-3">Easy Deployment</h4>
+                            <p class="text-muted">
+                                Containerized with Docker for easy local deployment and scaling. 
+                                All dependencies included with comprehensive documentation.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases Section -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12 text-center mb-5">
+                    <h2 class="h1 fw-bold">Use Cases</h2>
+                    <p class="lead text-muted">Monitor various types of environmental and urban changes</p>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-lg-3 col-md-6">
+                    <div class="text-center">
+                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 100px; height: 100px;">
+                            <i class="fas fa-tree fa-3x text-primary"></i>
+                        </div>
+                        <h5 class="fw-bold">Deforestation Monitoring</h5>
+                        <p class="text-muted">Track forest loss and degradation in real-time</p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6">
+                    <div class="text-center">
+                        <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 100px; height: 100px;">
+                            <i class="fas fa-city fa-3x text-success"></i>
+                        </div>
+                        <h5 class="fw-bold">Urban Expansion</h5>
+                        <p class="text-muted">Monitor urban growth and infrastructure development</p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6">
+                    <div class="text-center">
+                        <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 100px; height: 100px;">
+                            <i class="fas fa-water fa-3x text-info"></i>
+                        </div>
+                        <h5 class="fw-bold">Water Body Changes</h5>
+                        <p class="text-muted">Track changes in lakes, rivers, and wetlands</p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6">
+                    <div class="text-center">
+                        <div class="bg-warning bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 100px; height: 100px;">
+                            <i class="fas fa-seedling fa-3x text-warning"></i>
+                        </div>
+                        <h5 class="fw-bold">Agriculture Monitoring</h5>
+                        <p class="text-muted">Monitor crop patterns and agricultural land use</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology Stack -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12 text-center mb-5">
+                    <h2 class="h1 fw-bold">Built with Open Source Technology</h2>
+                    <p class="lead text-muted">Powered by industry-leading tools and frameworks</p>
+                </div>
+            </div>
+            
+            <div class="row g-4 align-items-center justify-content-center">
+                <div class="col-lg-2 col-md-3 col-4 text-center">
+                    <i class="fab fa-python fa-3x text-primary mb-2"></i>
+                    <p class="small fw-bold">Python</p>
+                </div>
+                <div class="col-lg-2 col-md-3 col-4 text-center">
+                    <i class="fab fa-django fa-3x text-success mb-2"></i>
+                    <p class="small fw-bold">Django</p>
+                </div>
+                <div class="col-lg-2 col-md-3 col-4 text-center">
+                    <i class="fas fa-database fa-3x text-info mb-2"></i>
+                    <p class="small fw-bold">PostgreSQL</p>
+                </div>
+                <div class="col-lg-2 col-md-3 col-4 text-center">
+                    <i class="fab fa-docker fa-3x text-primary mb-2"></i>
+                    <p class="small fw-bold">Docker</p>
+                </div>
+                <div class="col-lg-2 col-md-3 col-4 text-center">
+                    <i class="fas fa-brain fa-3x text-warning mb-2"></i>
+                    <p class="small fw-bold">PyTorch</p>
+                </div>
+                <div class="col-lg-2 col-md-3 col-4 text-center">
+                    <i class="fas fa-map fa-3x text-danger mb-2"></i>
+                    <p class="small fw-bold">Leaflet</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    {% if not user.is_authenticated %}
+    <section class="py-5 bg-primary text-white">
+        <div class="container text-center">
+            <h2 class="h1 fw-bold mb-4">Ready to Get Started?</h2>
+            <p class="lead mb-4">
+                Join researchers, conservationists, and organizations using satellite intelligence 
+                to monitor and protect our planet.
+            </p>
+            <a href="{% url 'core:login' %}" class="btn btn-light btn-lg">
+                <i class="fas fa-rocket me-2"></i>
+                Start Monitoring Today
+            </a>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %} 

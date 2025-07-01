@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_DB: changedetection
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - media_files:/app/media
+      - static_files:/app/staticfiles
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgis://postgres:password@db:5432/changedetection
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+  celery:
+    build: .
+    command: celery -A backend worker --loglevel=info
+    volumes:
+      - .:/app
+      - media_files:/app/media
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgis://postgres:password@db:5432/changedetection
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+  celery-beat:
+    build: .
+    command: celery -A backend beat --loglevel=info
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgis://postgres:password@db:5432/changedetection
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  media_files:
+  static_files:
+
+networks:
+  app-network:
+    driver: bridge 
