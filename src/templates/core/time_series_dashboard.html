@@ -1,0 +1,1068 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Time Series Analysis - Change Detection{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.css">
+<style>
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin-bottom: 30px;
+    }
+    
+    .chart-controls {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .metric-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #007acc;
+    }
+    
+    .metric-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .trend-indicator {
+        font-size: 1.2rem;
+        margin-left: 10px;
+    }
+    
+    .trend-up { color: #28a745; }
+    .trend-down { color: #dc3545; }
+    .trend-stable { color: #6c757d; }
+    
+    .anomaly-alert {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    
+    .anomaly-alert.high {
+        background: #f8d7da;
+        border-color: #f5c6cb;
+        color: #721c24;
+    }
+    
+    .baseline-info {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    
+    .analysis-section {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+    }
+    
+    .index-selector {
+        margin-right: 15px;
+    }
+    
+    .date-range-controls {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 20px;
+    }
+    
+    .statistics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .stat-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        text-align: center;
+    }
+    
+    .change-detection-timeline {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .timeline-event {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        border-left: 4px solid #007acc;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+    }
+    
+    .timeline-event.anomaly {
+        border-left-color: #dc3545;
+        background: #fff5f5;
+    }
+    
+    .timeline-date {
+        font-weight: bold;
+        min-width: 120px;
+    }
+    
+    .timeline-description {
+        flex: 1;
+        margin-left: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/1.30.1/date_fns.min.js"></script>
+{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'core:dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'core:map' %}">Map</a></li>
+        <li class="breadcrumb-item active">Time Series Analysis</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="h3 fw-bold mb-1">Time Series Analysis</h2>
+                <p class="text-muted mb-0">Monitor changes over time with advanced temporal analysis</p>
+            </div>
+            <div>
+                <button class="btn btn-outline-primary me-2" onclick="exportData()">
+                    <i class="fas fa-download me-2"></i>Export Data
+                </button>
+                <button class="btn btn-primary" onclick="generateReport()">
+                    <i class="fas fa-file-alt me-2"></i>Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AOI Selection and Controls -->
+<div class="row">
+    <div class="col-12">
+        <div class="chart-controls">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="aoiSelect" class="form-label">Area of Interest</label>
+                    <select class="form-select" id="aoiSelect" onchange="loadAOIData()">
+                        <option value="">Select AOI...</option>
+                        <!-- AOI options will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="indexSelect" class="form-label">Spectral Index</label>
+                    <select class="form-select" id="indexSelect" onchange="updateCharts()">
+                        <option value="ndvi">NDVI (Vegetation)</option>
+                        <option value="ndbi">NDBI (Built-up)</option>
+                        <option value="ndwi">NDWI (Water)</option>
+                        <option value="evi">EVI (Enhanced Vegetation)</option>
+                        <option value="bsi">BSI (Bare Soil)</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Date Range</label>
+                    <div class="date-range-controls">
+                        <input type="date" class="form-control" id="startDate" onchange="updateCharts()">
+                        <span>to</span>
+                        <input type="date" class="form-control" id="endDate" onchange="updateCharts()">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div>
+                        <button class="btn btn-primary w-100" onclick="updateCharts()">
+                            <i class="fas fa-sync me-2"></i>Update
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Metrics Row -->
+<div class="row" id="metricsRow">
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div class="metric-value" id="currentValue">--</div>
+            <div class="metric-label">Current Value</div>
+            <span class="trend-indicator" id="currentTrend"></span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div class="metric-value" id="changeRate">--</div>
+            <div class="metric-label">Change Rate (/year)</div>
+            <span class="trend-indicator" id="changeTrend"></span>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div class="metric-value" id="anomalyCount">--</div>
+            <div class="metric-label">Anomalies Detected</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div class="metric-value" id="dataQuality">--</div>
+            <div class="metric-label">Data Quality Score</div>
+        </div>
+    </div>
+</div>
+
+<!-- Anomaly Alerts -->
+<div id="anomalyAlerts"></div>
+
+<!-- Baseline Information -->
+<div id="baselineInfo" class="baseline-info" style="display: none;">
+    <h6><i class="fas fa-info-circle me-2"></i>Seasonal Baseline Information</h6>
+    <p id="baselineText">Loading baseline information...</p>
+</div>
+
+<!-- Main Charts -->
+<div class="row">
+    <!-- Time Series Chart -->
+    <div class="col-lg-8">
+        <div class="analysis-section">
+            <h5><i class="fas fa-chart-line me-2"></i>Time Series Analysis</h5>
+            <div class="chart-container">
+                <canvas id="timeSeriesChart"></canvas>
+            </div>
+            <div class="loading-spinner" id="chartLoading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading time series data...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Seasonal Analysis -->
+    <div class="col-lg-4">
+        <div class="analysis-section">
+            <h5><i class="fas fa-calendar-alt me-2"></i>Seasonal Pattern</h5>
+            <div class="chart-container">
+                <canvas id="seasonalChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Trend Analysis -->
+    <div class="col-lg-6">
+        <div class="analysis-section">
+            <h5><i class="fas fa-trending-up me-2"></i>Trend Analysis</h5>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+            <div class="statistics-grid">
+                <div class="stat-item">
+                    <div class="fw-bold" id="trendSlope">--</div>
+                    <small>Slope (per year)</small>
+                </div>
+                <div class="stat-item">
+                    <div class="fw-bold" id="trendRSquared">--</div>
+                    <small>R² (goodness of fit)</small>
+                </div>
+                <div class="stat-item">
+                    <div class="fw-bold" id="trendSignificance">--</div>
+                    <small>Statistical Significance</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Anomaly Detection -->
+    <div class="col-lg-6">
+        <div class="analysis-section">
+            <h5><i class="fas fa-exclamation-triangle me-2"></i>Anomaly Detection</h5>
+            <div class="chart-container">
+                <canvas id="anomalyChart"></canvas>
+            </div>
+            <div class="statistics-grid">
+                <div class="stat-item">
+                    <div class="fw-bold" id="anomalyThreshold">--</div>
+                    <small>Detection Threshold</small>
+                </div>
+                <div class="stat-item">
+                    <div class="fw-bold" id="maxAnomaly">--</div>
+                    <small>Maximum Anomaly</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Detection Timeline -->
+<div class="row">
+    <div class="col-12">
+        <div class="analysis-section">
+            <h5><i class="fas fa-timeline me-2"></i>Change Detection Timeline</h5>
+            <div id="changeTimeline">
+                <p class="text-muted">No significant changes detected in the selected time period.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistical Summary -->
+<div class="row">
+    <div class="col-12">
+        <div class="analysis-section">
+            <h5><i class="fas fa-calculator me-2"></i>Statistical Summary</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Statistic</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statsTableBody">
+                            <tr><td>Mean</td><td id="statMean">--</td></tr>
+                            <tr><td>Standard Deviation</td><td id="statStd">--</td></tr>
+                            <tr><td>Minimum</td><td id="statMin">--</td></tr>
+                            <tr><td>Maximum</td><td id="statMax">--</td></tr>
+                            <tr><td>Range</td><td id="statRange">--</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Temporal Metric</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Data Points</td><td id="statDataPoints">--</td></tr>
+                            <tr><td>Time Span</td><td id="statTimeSpan">--</td></tr>
+                            <tr><td>Temporal Coverage</td><td id="statCoverage">--</td></tr>
+                            <tr><td>Missing Data</td><td id="statMissing">--</td></tr>
+                            <tr><td>Seasonal Strength</td><td id="statSeasonalStrength">--</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global variables
+let timeSeriesChart, seasonalChart, trendChart, anomalyChart;
+let currentAOI = null;
+let currentData = null;
+let baselineData = null;
+
+// Initialize charts
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    loadAOIList();
+    setDefaultDateRange();
+});
+
+function initializeCharts() {
+    // Time Series Chart
+    const timeCtx = document.getElementById('timeSeriesChart').getContext('2d');
+    timeSeriesChart = new Chart(timeCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Observed Values',
+                data: [],
+                borderColor: '#007acc',
+                backgroundColor: 'rgba(0, 122, 204, 0.1)',
+                tension: 0.4,
+                pointRadius: 3,
+                pointHoverRadius: 6
+            }, {
+                label: 'Seasonal Baseline',
+                data: [],
+                borderColor: '#6c757d',
+                backgroundColor: 'transparent',
+                borderDash: [5, 5],
+                tension: 0.4,
+                pointRadius: 0
+            }, {
+                label: 'Anomalies',
+                data: [],
+                backgroundColor: '#dc3545',
+                borderColor: '#dc3545',
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                showLine: false,
+                type: 'scatter'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Time Series with Anomaly Detection'
+                },
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            if (context.datasetIndex === 2) { // Anomalies
+                                return 'Anomaly Score: ' + (context.raw.anomalyScore || 'N/A');
+                            }
+                            return '';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        parser: 'YYYY-MM-DD',
+                        tooltipFormat: 'MMM DD, YYYY',
+                        displayFormats: {
+                            month: 'MMM YYYY'
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Index Value'
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+
+    // Seasonal Chart
+    const seasonalCtx = document.getElementById('seasonalChart').getContext('2d');
+    seasonalChart = new Chart(seasonalCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            datasets: [{
+                label: 'Monthly Average',
+                data: [],
+                backgroundColor: '#007acc',
+                borderColor: '#0056b3',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Seasonal Pattern (Monthly Averages)'
+                }
+            },
+            scales: {
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Average Value'
+                    }
+                }
+            }
+        }
+    });
+
+    // Trend Chart
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    trendChart = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Observed',
+                data: [],
+                borderColor: '#007acc',
+                backgroundColor: 'rgba(0, 122, 204, 0.1)',
+                tension: 0.1,
+                pointRadius: 2
+            }, {
+                label: 'Trend Line',
+                data: [],
+                borderColor: '#dc3545',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Linear Trend Analysis'
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        parser: 'YYYY-MM-DD',
+                        tooltipFormat: 'MMM DD, YYYY'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Index Value'
+                    }
+                }
+            }
+        }
+    });
+
+    // Anomaly Chart
+    const anomalyCtx = document.getElementById('anomalyChart').getContext('2d');
+    anomalyChart = new Chart(anomalyCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Anomaly Score',
+                data: [],
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                tension: 0.4,
+                pointRadius: 3,
+                fill: true
+            }, {
+                label: 'Threshold',
+                data: [],
+                borderColor: '#dc3545',
+                backgroundColor: 'transparent',
+                borderDash: [10, 5],
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Anomaly Detection Scores'
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        parser: 'YYYY-MM-DD',
+                        tooltipFormat: 'MMM DD, YYYY'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Anomaly Score'
+                    },
+                    suggestedMin: 0
+                }
+            }
+        }
+    });
+}
+
+async function loadAOIList() {
+    try {
+        const response = await fetch('/api/core/areas/');
+        const aois = await response.json();
+        
+        const select = document.getElementById('aoiSelect');
+        select.innerHTML = '<option value="">Select AOI...</option>';
+        
+        aois.forEach(aoi => {
+            const option = document.createElement('option');
+            option.value = aoi.id;
+            option.textContent = aoi.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading AOI list:', error);
+        showAlert('Error loading AOI list', 'danger');
+    }
+}
+
+function setDefaultDateRange() {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setFullYear(startDate.getFullYear() - 2); // Default to 2 years
+    
+    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+}
+
+async function loadAOIData() {
+    const aoiId = document.getElementById('aoiSelect').value;
+    if (!aoiId) return;
+    
+    currentAOI = aoiId;
+    showLoading(true);
+    
+    try {
+        // Load time series data
+        await loadTimeSeriesData();
+        
+        // Load baseline data
+        await loadBaselineData();
+        
+        // Update all charts and metrics
+        updateCharts();
+        
+    } catch (error) {
+        console.error('Error loading AOI data:', error);
+        showAlert('Error loading AOI data: ' + error.message, 'danger');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function loadTimeSeriesData() {
+    const aoiId = currentAOI;
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    const index = document.getElementById('indexSelect').value;
+    
+    const params = new URLSearchParams({
+        aoi_id: aoiId,
+        start_date: startDate,
+        end_date: endDate,
+        index: index
+    });
+    
+    const response = await fetch(`/api/time-series/data/?${params}`);
+    if (!response.ok) {
+        throw new Error('Failed to load time series data');
+    }
+    
+    currentData = await response.json();
+}
+
+async function loadBaselineData() {
+    const aoiId = currentAOI;
+    const index = document.getElementById('indexSelect').value;
+    
+    const params = new URLSearchParams({
+        aoi_id: aoiId,
+        index: index
+    });
+    
+    try {
+        const response = await fetch(`/api/time-series/baseline/?${params}`);
+        if (response.ok) {
+            baselineData = await response.json();
+            showBaselineInfo();
+        }
+    } catch (error) {
+        console.warn('Baseline data not available:', error);
+        baselineData = null;
+    }
+}
+
+function updateCharts() {
+    if (!currentData) return;
+    
+    updateTimeSeriesChart();
+    updateSeasonalChart();
+    updateTrendChart();
+    updateAnomalyChart();
+    updateMetrics();
+    updateStatistics();
+    updateTimeline();
+}
+
+function updateTimeSeriesChart() {
+    const data = currentData.time_series || [];
+    const anomalies = currentData.anomalies || [];
+    const baseline = baselineData ? baselineData.monthly_means : null;
+    
+    // Prepare data
+    const labels = data.map(d => d.date);
+    const values = data.map(d => d.value);
+    
+    // Baseline interpolation (if available)
+    let baselineValues = [];
+    if (baseline) {
+        baselineValues = data.map(d => {
+            const month = new Date(d.date).getMonth();
+            return baseline[month] || null;
+        });
+    }
+    
+    // Anomaly points
+    const anomalyPoints = anomalies.map(a => ({
+        x: a.date,
+        y: a.value,
+        anomalyScore: a.score
+    }));
+    
+    // Update chart
+    timeSeriesChart.data.labels = labels;
+    timeSeriesChart.data.datasets[0].data = values;
+    timeSeriesChart.data.datasets[1].data = baselineValues;
+    timeSeriesChart.data.datasets[2].data = anomalyPoints;
+    
+    timeSeriesChart.update();
+}
+
+function updateSeasonalChart() {
+    if (!currentData.seasonal_pattern) return;
+    
+    const monthlyData = currentData.seasonal_pattern;
+    seasonalChart.data.datasets[0].data = monthlyData;
+    seasonalChart.update();
+}
+
+function updateTrendChart() {
+    if (!currentData.trend_analysis) return;
+    
+    const data = currentData.time_series || [];
+    const trend = currentData.trend_analysis;
+    
+    // Generate trend line
+    const trendLine = data.map((d, i) => {
+        const timestamp = new Date(d.date).getTime();
+        return trend.slope * timestamp + trend.intercept;
+    });
+    
+    trendChart.data.labels = data.map(d => d.date);
+    trendChart.data.datasets[0].data = data.map(d => d.value);
+    trendChart.data.datasets[1].data = trendLine;
+    
+    trendChart.update();
+    
+    // Update trend statistics
+    document.getElementById('trendSlope').textContent = 
+        (trend.slope * 365.25 * 24 * 3600 * 1000).toFixed(4);
+    document.getElementById('trendRSquared').textContent = 
+        trend.r_squared.toFixed(3);
+    document.getElementById('trendSignificance').textContent = 
+        trend.is_significant ? 'Significant' : 'Not Significant';
+}
+
+function updateAnomalyChart() {
+    if (!currentData.anomaly_analysis) return;
+    
+    const data = currentData.time_series || [];
+    const anomalyScores = currentData.anomaly_analysis.scores || [];
+    const threshold = currentData.anomaly_analysis.threshold || 2.0;
+    
+    const labels = data.map(d => d.date);
+    const thresholdLine = new Array(labels.length).fill(threshold);
+    
+    anomalyChart.data.labels = labels;
+    anomalyChart.data.datasets[0].data = anomalyScores;
+    anomalyChart.data.datasets[1].data = thresholdLine;
+    
+    anomalyChart.update();
+    
+    // Update anomaly statistics
+    document.getElementById('anomalyThreshold').textContent = threshold.toFixed(2);
+    document.getElementById('maxAnomaly').textContent = 
+        Math.max(...anomalyScores).toFixed(2);
+}
+
+function updateMetrics() {
+    if (!currentData) return;
+    
+    const metrics = currentData.metrics || {};
+    const trend = currentData.trend_analysis || {};
+    
+    // Current value
+    const currentValue = metrics.current_value || 0;
+    document.getElementById('currentValue').textContent = currentValue.toFixed(3);
+    
+    // Change rate
+    const changeRate = trend.slope ? (trend.slope * 365.25 * 24 * 3600 * 1000).toFixed(4) : '--';
+    document.getElementById('changeRate').textContent = changeRate;
+    
+    // Trend indicators
+    const trendElement = document.getElementById('changeTrend');
+    if (trend.slope > 0.001) {
+        trendElement.innerHTML = '<i class="fas fa-arrow-up trend-up"></i>';
+    } else if (trend.slope < -0.001) {
+        trendElement.innerHTML = '<i class="fas fa-arrow-down trend-down"></i>';
+    } else {
+        trendElement.innerHTML = '<i class="fas fa-minus trend-stable"></i>';
+    }
+    
+    // Anomaly count
+    const anomalyCount = currentData.anomalies ? currentData.anomalies.length : 0;
+    document.getElementById('anomalyCount').textContent = anomalyCount;
+    
+    // Data quality
+    const dataQuality = metrics.data_quality || 0;
+    document.getElementById('dataQuality').textContent = (dataQuality * 100).toFixed(0) + '%';
+    
+    // Show anomaly alerts
+    showAnomalyAlerts();
+}
+
+function updateStatistics() {
+    if (!currentData.statistics) return;
+    
+    const stats = currentData.statistics;
+    
+    document.getElementById('statMean').textContent = stats.mean.toFixed(3);
+    document.getElementById('statStd').textContent = stats.std.toFixed(3);
+    document.getElementById('statMin').textContent = stats.min.toFixed(3);
+    document.getElementById('statMax').textContent = stats.max.toFixed(3);
+    document.getElementById('statRange').textContent = (stats.max - stats.min).toFixed(3);
+    
+    document.getElementById('statDataPoints').textContent = stats.count;
+    document.getElementById('statTimeSpan').textContent = stats.time_span_years.toFixed(1) + ' years';
+    document.getElementById('statCoverage').textContent = (stats.temporal_coverage * 100).toFixed(0) + '%';
+    document.getElementById('statMissing').textContent = stats.missing_data + '%';
+    document.getElementById('statSeasonalStrength').textContent = stats.seasonal_strength.toFixed(2);
+}
+
+function updateTimeline() {
+    const timeline = document.getElementById('changeTimeline');
+    const changes = currentData.significant_changes || [];
+    
+    if (changes.length === 0) {
+        timeline.innerHTML = '<p class="text-muted">No significant changes detected in the selected time period.</p>';
+        return;
+    }
+    
+    let html = '';
+    changes.forEach(change => {
+        const isAnomaly = change.type === 'anomaly';
+        const eventClass = isAnomaly ? 'timeline-event anomaly' : 'timeline-event';
+        
+        html += `
+            <div class="${eventClass}">
+                <div class="timeline-date">${new Date(change.date).toLocaleDateString()}</div>
+                <div class="timeline-description">
+                    <strong>${change.title}</strong><br>
+                    ${change.description}
+                    ${change.confidence ? `<br><small>Confidence: ${(change.confidence * 100).toFixed(0)}%</small>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    timeline.innerHTML = html;
+}
+
+function showBaselineInfo() {
+    if (!baselineData) return;
+    
+    const info = document.getElementById('baselineInfo');
+    const text = document.getElementById('baselineText');
+    
+    const baselineYears = baselineData.baseline_years || 3;
+    const sampleCount = baselineData.total_samples || 0;
+    const seasonalStrength = baselineData.seasonal_strength || 0;
+    
+    text.innerHTML = `
+        Seasonal baseline calculated from <strong>${baselineYears} years</strong> of historical data 
+        (${sampleCount} observations). Seasonal strength: <strong>${(seasonalStrength * 100).toFixed(0)}%</strong>.
+        This baseline is used to distinguish natural seasonal variations from anthropogenic changes.
+    `;
+    
+    info.style.display = 'block';
+}
+
+function showAnomalyAlerts() {
+    const container = document.getElementById('anomalyAlerts');
+    const anomalies = currentData.anomalies || [];
+    
+    container.innerHTML = '';
+    
+    // Show only recent high-confidence anomalies
+    const recentAnomalies = anomalies
+        .filter(a => a.confidence > 0.7)
+        .slice(-3); // Show last 3
+    
+    recentAnomalies.forEach(anomaly => {
+        const alertClass = anomaly.confidence > 0.9 ? 'anomaly-alert high' : 'anomaly-alert';
+        const alertHtml = `
+            <div class="${alertClass}">
+                <strong><i class="fas fa-exclamation-triangle me-2"></i>Anomaly Detected</strong><br>
+                Date: ${new Date(anomaly.date).toLocaleDateString()}<br>
+                Type: ${anomaly.change_type || 'Unknown'}<br>
+                Confidence: ${(anomaly.confidence * 100).toFixed(0)}%<br>
+                <small>${anomaly.description || 'Significant deviation from expected seasonal pattern'}</small>
+            </div>
+        `;
+        container.innerHTML += alertHtml;
+    });
+}
+
+function showLoading(show) {
+    const spinner = document.getElementById('chartLoading');
+    spinner.style.display = show ? 'block' : 'none';
+}
+
+function showAlert(message, type = 'info') {
+    // Create and show bootstrap alert
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+async function exportData() {
+    if (!currentData) {
+        showAlert('No data to export', 'warning');
+        return;
+    }
+    
+    try {
+        const aoiId = currentAOI;
+        const index = document.getElementById('indexSelect').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        const params = new URLSearchParams({
+            aoi_id: aoiId,
+            index: index,
+            start_date: startDate,
+            end_date: endDate,
+            format: 'csv'
+        });
+        
+        const response = await fetch(`/api/time-series/export/?${params}`);
+        if (!response.ok) throw new Error('Export failed');
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `time_series_${index}_${aoiId}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        showAlert('Data exported successfully', 'success');
+    } catch (error) {
+        console.error('Export error:', error);
+        showAlert('Error exporting data: ' + error.message, 'danger');
+    }
+}
+
+async function generateReport() {
+    if (!currentData) {
+        showAlert('No data available for report generation', 'warning');
+        return;
+    }
+    
+    try {
+        const aoiId = currentAOI;
+        const index = document.getElementById('indexSelect').value;
+        
+        const response = await fetch('/api/time-series/report/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                aoi_id: aoiId,
+                index: index,
+                data: currentData
+            })
+        });
+        
+        if (!response.ok) throw new Error('Report generation failed');
+        
+        const result = await response.json();
+        showAlert('Report generated successfully. Check your email for the PDF report.', 'success');
+        
+    } catch (error) {
+        console.error('Report generation error:', error);
+        showAlert('Error generating report: ' + error.message, 'danger');
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+
+{% endblock %} 
