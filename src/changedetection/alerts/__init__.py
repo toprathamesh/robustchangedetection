@@ -1,1 +1,0 @@
-# Alert system for change detection notifications 

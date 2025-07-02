@@ -1,1 +1,0 @@
-# Data processing and satellite image handling 

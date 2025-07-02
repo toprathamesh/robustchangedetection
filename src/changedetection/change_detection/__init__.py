@@ -1,1 +1,0 @@
-# Change detection algorithms and models 
