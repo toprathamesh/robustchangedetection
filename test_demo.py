@@ -117,8 +117,8 @@ if __name__ == "__main__":
     print(f"✅ Model Comparison: {'Working' if comparison_works else 'Failed'}")
     
     # Cleanup
-    print(f"\n🧹 Cleaning up test files...")
-    for file in ['before_test.png', 'after_test.png']:
-        if Path(file).exists():
-            Path(file).unlink()
-            print(f"   🗑️ Deleted {file}") 
+    # print(f"\n🧹 Cleaning up test files...")
+    # for file in ['before_test.png', 'after_test.png']:
+    #     if Path(file).exists():
+    #         Path(file).unlink()
+    #         print(f"   🗑️ Deleted {file}") 
