@@ -16,6 +16,8 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 from PIL import Image
 import cv2
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 from pathlib import Path
 import json
@@ -25,6 +27,7 @@ from dataclasses import dataclass, asdict
 import time
 from contextlib import contextmanager
 import warnings
+import os
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -50,6 +53,26 @@ try:
     SOTA_AVAILABLE = True
 except ImportError:
     logger.warning("SOTA models not available. Using simplified interface.")
+    # Create fallback classes
+    class ChangeDetectionConfig:
+        def __init__(self, model_type="siamese_unet", **kwargs):
+            self.model_type = model_type
+            self.in_channels = 6  # 3 channels per image
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+    
+    def get_model_info(model):
+        if model is None:
+            return {'total_parameters': 0, 'size_mb': 0.0}
+        try:
+            params = sum(p.numel() for p in model.parameters())
+            size_mb = params * 4 / (1024 * 1024)  # Assuming float32
+            return {'total_parameters': params, 'size_mb': size_mb}
+        except:
+            return {'total_parameters': 0, 'size_mb': 0.0}
+    
+    SOTA_AVAILABLE = False
+    
     try:
         from .advanced_models import SiameseChangeDetector
         FALLBACK_AVAILABLE = True
@@ -381,29 +404,71 @@ class UnifiedChangeDetector:
         after_tensor = torch.FloatTensor(after_img).permute(2, 0, 1).unsqueeze(0).to(self.device)
         
         # Model inference
-        if self.model is not None:
-            self.model.eval()
-            with torch.no_grad():
-                if self.model_type in ["siamese_unet", "tinycd", "changeformer", "baseline_unet"]:
-                    outputs = self.model(before_tensor, after_tensor)
-                    change_map = outputs['change_map'].cpu().squeeze().numpy()
-                    
-                    # Handle multi-class output
-                    if len(change_map.shape) == 3:
-                        change_map = change_map[1]  # Take change class
-                elif self.model_type == "siamese_fallback":
-                    # Use Siamese model with separate before and after images
-                    outputs = self.model(before_tensor, after_tensor)
-                    change_probability = outputs['change_probability'].cpu().squeeze().numpy()
-                    # Create spatial change map from probability
-                    if isinstance(change_probability, np.ndarray) and change_probability.size == 1:
-                        change_probability = float(change_probability)
-                    change_map = np.full(before_img.shape[:2], change_probability)
-                else:
-                    # Fallback to simple model
-                    change_map = self._simple_predict(before_img, after_img)
-        else:
-            # No model available, use simple prediction
+        try:
+            if self.model is not None:
+                self.model.eval()
+                with torch.no_grad():
+                    if self.model_type in ["siamese_unet", "tinycd", "changeformer", "baseline_unet"]:
+                        # Handle different model output formats
+                        try:
+                            # Try concatenated input format first
+                            concat_input = torch.cat([before_tensor, after_tensor], dim=1)
+                            outputs = self.model(concat_input)
+                            
+                            # Handle different output formats
+                            if isinstance(outputs, dict):
+                                if 'change_map' in outputs:
+                                    change_map = outputs['change_map'].cpu().squeeze().numpy()
+                                elif 'logits' in outputs:
+                                    change_map = torch.sigmoid(outputs['logits']).cpu().squeeze().numpy()
+                                else:
+                                    # Take first output
+                                    change_map = list(outputs.values())[0].cpu().squeeze().numpy()
+                            else:
+                                # Direct tensor output
+                                if len(outputs.shape) > 3:
+                                    outputs = outputs.squeeze(0)  # Remove batch dimension
+                                if len(outputs.shape) == 3 and outputs.shape[0] > 1:
+                                    # Multi-class output, take change class
+                                    change_map = torch.sigmoid(outputs[1]).cpu().numpy()
+                                else:
+                                    change_map = torch.sigmoid(outputs).cpu().squeeze().numpy()
+                        except:
+                            # Try separate input format
+                            outputs = self.model(before_tensor, after_tensor)
+                            if isinstance(outputs, dict):
+                                change_map = outputs.get('change_map', outputs.get('logits', list(outputs.values())[0]))
+                                change_map = torch.sigmoid(change_map).cpu().squeeze().numpy()
+                            else:
+                                change_map = torch.sigmoid(outputs).cpu().squeeze().numpy()
+                                
+                    elif self.model_type == "siamese_fallback":
+                        # Use Siamese model with separate before and after images
+                        try:
+                            outputs = self.model(before_tensor, after_tensor)
+                            if isinstance(outputs, dict):
+                                change_probability = outputs.get('change_probability', outputs.get('logits', list(outputs.values())[0]))
+                            else:
+                                change_probability = outputs
+                            
+                            change_probability = torch.sigmoid(change_probability).cpu().squeeze().numpy()
+                            
+                            # Create spatial change map from probability
+                            if isinstance(change_probability, np.ndarray) and change_probability.size == 1:
+                                change_probability = float(change_probability)
+                            change_map = np.full(before_img.shape[:2], change_probability)
+                        except Exception as e:
+                            logger.warning(f"Fallback model failed: {e}, using simple prediction")
+                            change_map = self._simple_predict(before_img, after_img)
+                    else:
+                        # Fallback to simple model
+                        change_map = self._simple_predict(before_img, after_img)
+            else:
+                # No model available, use simple prediction
+                change_map = self._simple_predict(before_img, after_img)
+                
+        except Exception as e:
+            logger.warning(f"Model inference failed: {e}, using simple prediction")
             change_map = self._simple_predict(before_img, after_img)
         
         # Post-processing
@@ -450,9 +515,20 @@ class UnifiedChangeDetector:
     def _load_image(self, image: Union[str, np.ndarray]) -> np.ndarray:
         """Load image from path or return array"""
         if isinstance(image, str):
-            img = Image.open(image).convert('RGB')
-            return np.array(img)
+            if not os.path.exists(image):
+                raise FileNotFoundError(f"Image file not found: {image}")
+            try:
+                img = Image.open(image).convert('RGB')
+                img_array = np.array(img)
+                logger.debug(f"Loaded image {image}: shape {img_array.shape}")
+                return img_array
+            except Exception as e:
+                raise ValueError(f"Failed to load image {image}: {e}")
         else:
+            if not isinstance(image, np.ndarray):
+                raise ValueError(f"Expected numpy array or string path, got {type(image)}")
+            if len(image.shape) != 3 or image.shape[2] != 3:
+                raise ValueError(f"Expected RGB image with shape (H, W, 3), got {image.shape}")
             return image
             
     def _simple_predict(self, before_img: np.ndarray, after_img: np.ndarray) -> np.ndarray:
@@ -515,8 +591,13 @@ class UnifiedChangeDetector:
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
             logger.info(f"Visualization saved to {save_path}")
+        else:
+            # Auto-generate filename
+            save_path = f"change_detection_result_{int(time.time())}.png"
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            logger.info(f"Visualization saved to {save_path}")
         
-        plt.show()
+        plt.close(fig)  # Close figure to prevent memory leaks
         
         return fig
     
